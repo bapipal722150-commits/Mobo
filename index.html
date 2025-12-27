@@ -1,0 +1,2136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#121212">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="description" content="Mobo Game - A mobile obstacle avoidance game with collectibles">
+    <title>Mobo Game</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/x-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎮</text></svg>">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎮</text></svg>">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            margin: 0;
+            background: #121212;
+            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #fff;
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        canvas {
+            display: block;
+            background: linear-gradient(#0d0d0d, #1a1a1a);
+        }
+
+        #installBtn {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            padding: 8px 16px;
+            background: linear-gradient(135deg, #2196F3, #0D47A1);
+            border: none;
+            border-radius: 20px;
+            color: white;
+            font-weight: 600;
+            z-index: 1000;
+            cursor: pointer;
+            display: none;
+            box-shadow: 0 4px 15px rgba(33, 150, 243, 0.4);
+            font-size: 14px;
+        }
+
+        #installBtn:hover {
+            transform: scale(1.05);
+        }
+
+        #statusBar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 30px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1001;
+            font-size: 12px;
+            backdrop-filter: blur(10px);
+            display: none;
+        }
+
+        /* Fixed Joystick */
+        #joystick {
+            position: fixed;
+            width: 100px;
+            height: 100px;
+            background: radial-gradient(rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
+            border-radius: 50%;
+            box-shadow: 0 0 12px rgba(255, 255, 255, 0.1) inset;
+            z-index: 10;
+        }
+
+        #stick {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            background: radial-gradient(circle at 30% 30%, #ffffffcc, #ffffff66);
+            border-radius: 50%;
+            top: 30px;
+            left: 30px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+            transition: transform 0.05s linear;
+        }
+
+        /* Floating Joystick (Universal) */
+        #floatingJoystick {
+            position: absolute;
+            width: 100px;
+            height: 100px;
+            background: radial-gradient(rgba(0, 100, 255, 0.15), rgba(0, 50, 200, 0.05));
+            border-radius: 50%;
+            box-shadow: 0 0 20px rgba(0, 100, 255, 0.3) inset;
+            z-index: 9;
+            display: none;
+            border: 2px solid rgba(100, 150, 255, 0.3);
+        }
+
+        #floatingStick {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            background: radial-gradient(circle at 30% 30%, #88aaff, #4477ff);
+            border-radius: 50%;
+            top: 30px;
+            left: 30px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+            transition: transform 0.05s linear;
+        }
+
+        /* Top Bar */
+        #top-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 70px;
+            background: rgba(20, 20, 20, 0.9);
+            backdrop-filter: blur(10px);
+            z-index: 11;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 15px;
+            border-bottom: 2px solid rgba(255, 85, 85, 0.3);
+        }
+
+        /* Top Buttons - Left Side */
+        .top-left-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        /* Top Buttons - Right Side */
+        .top-right-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        /* Top HUD - Middle */
+        #top-hud {
+            background: rgba(255, 85, 85, 0.2);
+            padding: 8px 20px;
+            border-radius: 15px;
+            color: #fff;
+            font-size: 16px;
+            display: flex;
+            gap: 20px;
+            border: 2px solid rgba(255, 85, 85, 0.3);
+            min-width: 200px;
+            justify-content: center;
+            box-shadow: 0 4px 15px rgba(255, 85, 85, 0.2);
+        }
+
+        #lives {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+        }
+
+        #score {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+        }
+
+        /* Buttons */
+        #restartBtn {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 20px 40px;
+            font-size: 22px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #ff5555, #ff2222);
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            z-index: 15;
+            color: #fff;
+            box-shadow: 0 10px 30px rgba(255, 0, 0, 0.6);
+            display: none;
+            animation: pulse 1s infinite alternate;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            transition: all 0.3s;
+        }
+
+        #restartBtn:hover {
+            transform: translate(-50%, -50%) scale(1.12);
+            box-shadow: 0 15px 35px rgba(255, 0, 0, 0.8);
+        }
+
+        /* Resume Button */
+        #resumeBtn {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 20px 40px;
+            font-size: 22px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #4CAF50, #2E7D32);
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            z-index: 16;
+            color: #fff;
+            box-shadow: 0 10px 30px rgba(76, 175, 80, 0.6);
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            transition: all 0.3s;
+            display: none;
+        }
+
+        #resumeBtn:hover {
+            transform: translate(-50%, -50%) scale(1.12);
+            box-shadow: 0 15px 35px rgba(76, 175, 80, 0.8);
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: translate(-50%, -50%) scale(1);
+            }
+
+            100% {
+                transform: translate(-50%, -50%) scale(1.08);
+            }
+        }
+
+        /* Settings Button */
+        #settingsBtn {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #4CAF50, #2E7D32);
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            color: #fff;
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4);
+            transition: transform 0.2s;
+        }
+
+        #settingsBtn:hover {
+            transform: scale(1.15) rotate(30deg);
+        }
+
+        /* Pause Button */
+        #pauseBtn {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #FF9800, #FF5722);
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            color: #fff;
+            font-size: 22px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 15px rgba(255, 152, 0, 0.4);
+            transition: transform 0.2s;
+        }
+
+        #pauseBtn:hover {
+            transform: scale(1.15);
+        }
+
+        /* Top Scores Button */
+        #topScoresBtn {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #2196F3, #0D47A1);
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            color: #fff;
+            font-size: 22px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 15px rgba(33, 150, 243, 0.4);
+            transition: transform 0.2s;
+        }
+
+        #topScoresBtn:hover {
+            transform: scale(1.15);
+        }
+
+        #topScoresDisplay {
+            position: fixed;
+            top: 75px;
+            right: 20px;
+            padding: 15px;
+            background: rgba(20, 20, 20, 0.95);
+            border-radius: 15px;
+            font-size: 16px;
+            line-height: 1.5;
+            color: #fff;
+            display: none;
+            z-index: 13;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 0 20px rgba(0, 0, 255, 0.4);
+            border: 2px solid rgba(100, 100, 255, 0.3);
+            min-width: 180px;
+            text-align: center;
+        }
+
+        /* Settings Modal - COMPACT */
+        #settingsModal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 20;
+            backdrop-filter: blur(8px);
+            color: #fff;
+        }
+
+        #settingsContent {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(145deg, #1a1a1a, #2d2d2d);
+            padding: 15px;
+            border-radius: 12px;
+            width: 95%;
+            max-width: 380px;
+            max-height: 85vh;
+            overflow-y: auto;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* Settings Header with Close Button */
+        .settings-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .settings-header h3 {
+            margin: 0;
+            font-size: 18px;
+            background: linear-gradient(90deg, #4CAF50, #2196F3);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        #closeSettingsBtn {
+            background: #ff5555;
+            border: none;
+            color: white;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s;
+        }
+
+        #closeSettingsBtn:hover {
+            transform: scale(1.1);
+            background: #ff3333;
+        }
+
+        /* Compact Settings Layout */
+        .settings-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+
+        .settings-section {
+            background: rgba(30, 30, 30, 0.4);
+            border-radius: 8px;
+            padding: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .settings-section h4 {
+            margin: 0 0 8px 0;
+            color: #4CAF50;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .settings-section h4::before {
+            content: "⚙️";
+            font-size: 11px;
+        }
+
+        .setting-item {
+            margin-bottom: 8px;
+        }
+
+        .setting-item label {
+            display: block;
+            margin-bottom: 3px;
+            font-size: 11px;
+            color: #ccc;
+        }
+
+        .setting-item input[type="range"] {
+            width: 100%;
+            height: 5px;
+            -webkit-appearance: none;
+            background: linear-gradient(90deg, #4CAF50, #2196F3);
+            border-radius: 2px;
+            outline: none;
+        }
+
+        .setting-item input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 15px;
+            height: 15px;
+            background: #fff;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+        }
+
+        .setting-item input[type="color"] {
+            width: 100%;
+            height: 25px;
+            border-radius: 5px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: transparent;
+            cursor: pointer;
+        }
+
+        .setting-item select {
+            width: 100%;
+            padding: 5px;
+            border-radius: 5px;
+            background: rgba(40, 40, 40, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #fff;
+            font-size: 11px;
+        }
+
+        .setting-value {
+            float: right;
+            font-weight: bold;
+            color: #4CAF50;
+            font-size: 11px;
+        }
+
+        .setting-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin-bottom: 5px;
+        }
+
+        .setting-checkbox input[type="checkbox"] {
+            width: 14px;
+            height: 14px;
+            accent-color: #4CAF50;
+        }
+
+        .apply-settings-btn {
+            width: 100%;
+            padding: 10px;
+            background: linear-gradient(135deg, #4CAF50, #2E7D32);
+            border: none;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: transform 0.2s;
+        }
+
+        .apply-settings-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(76, 175, 80, 0.4);
+        }
+
+        /* Full width sections */
+        .full-width {
+            grid-column: 1 / -1;
+        }
+
+        /* Game Over Text */
+        .game-over-text {
+            position: fixed;
+            top: 40%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 52px;
+            font-weight: 900;
+            text-shadow: 3px 3px 25px #ff0000cc;
+            color: #ff5555;
+            text-align: center;
+            z-index: 14;
+            display: none;
+            animation: pulse 0.5s infinite alternate;
+        }
+
+        /* Pause Overlay */
+        #pauseOverlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(5px);
+            display: none;
+            z-index: 15;
+            justify-content: center;
+            align-items: center;
+            color: #fff;
+            flex-direction: column;
+            gap: 30px;
+        }
+
+        #pauseText {
+            font-size: 48px;
+            font-weight: 700;
+            color: #FF9800;
+            text-shadow: 0 0 20px rgba(255, 152, 0, 0.7);
+        }
+
+        /* Safe Zone Indicator */
+        #safeZone {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 120px;
+            height: 120px;
+            border: 3px dashed #4CAF50;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 9;
+            opacity: 0.3;
+            display: none;
+        }
+
+        /* Control Mode Indicator */
+        #controlModeIndicator {
+            position: fixed;
+            bottom: 130px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(20, 20, 20, 0.7);
+            padding: 5px 15px;
+            border-radius: 10px;
+            font-size: 12px;
+            color: #fff;
+            z-index: 8;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* Offline Indicator */
+        #offlineIndicator {
+            position: fixed;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 152, 0, 0.9);
+            padding: 5px 15px;
+            border-radius: 10px;
+            font-size: 12px;
+            color: #fff;
+            z-index: 8;
+            display: none;
+        }
+
+        /* Loading Screen */
+        #loadingScreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #121212;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            transition: opacity 0.5s;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            border-top-color: #4CAF50;
+            animation: spin 1s ease-in-out infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        #loadingText {
+            color: white;
+            font-size: 18px;
+            margin-top: 20px;
+        }
+
+        /* Toast Notification */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 25px;
+            z-index: 1000;
+            transition: transform 0.3s;
+            font-size: 14px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+        }
+    </style>
+</head>
+
+<body>
+    <!-- PWA Install Button -->
+    <button id="installBtn">📲 Install App</button>
+    <div id="statusBar"></div>
+    <div id="loadingScreen">
+        <div class="spinner"></div>
+        <div id="loadingText">Loading Mobo Game...</div>
+    </div>
+    <div class="toast" id="toast"></div>
+    <div id="offlineIndicator">⚡ Offline Mode</div>
+
+    <canvas id="game"></canvas>
+    <button id="restartBtn">Restart</button>
+    <button id="resumeBtn">▶ Resume</button>
+
+    <!-- Top Bar with all buttons and score -->
+    <div id="top-bar">
+        <!-- Left side: Settings and Pause buttons -->
+        <div class="top-left-buttons">
+            <button id="settingsBtn">⚙️</button>
+            <button id="pauseBtn">⏸️</button>
+        </div>
+
+        <!-- Middle: Score and Lives -->
+        <div id="top-hud">
+            <div id="lives">❤️ <span id="livesValue">3</span></div>
+            <div id="score">🏆 <span id="scoreValue">0</span></div>
+        </div>
+
+        <!-- Right side: Top Scores button -->
+        <div class="top-right-buttons">
+            <button id="topScoresBtn">🏆</button>
+        </div>
+    </div>
+
+    <div id="topScoresDisplay"></div>
+
+    <div class="game-over-text" id="gameOverText">GAME OVER</div>
+    <div id="pauseOverlay">
+        <div id="pauseText">PAUSED</div>
+    </div>
+    <div id="safeZone"></div>
+    <div id="controlModeIndicator">Controls: Fixed Joystick</div>
+
+    <!-- Settings Modal - COMPACT VERSION -->
+    <div id="settingsModal">
+        <div id="settingsContent">
+            <div class="settings-header">
+                <h3>Game Settings</h3>
+                <button id="closeSettingsBtn">✕</button>
+            </div>
+
+            <div class="settings-grid">
+                <!-- Difficulty Section -->
+                <div class="settings-section">
+                    <h4>Difficulty</h4>
+                    <div class="setting-item">
+                        <label>Hazard Speed: <span class="setting-value" id="hazardSpeedVal">1.0</span></label>
+                        <input type="range" id="hazardSpeed" min="0.1" max="5" step="0.1" value="1">
+                    </div>
+                    <div class="setting-item">
+                        <label>Hazard Count: <span class="setting-value" id="hazardCountVal">3</span></label>
+                        <input type="range" id="hazardCount" min="1" max="10" step="1" value="3">
+                    </div>
+                    <div class="setting-item">
+                        <label>Hazard Size: <span class="setting-value" id="hazardSizeVal">40</span></label>
+                        <input type="range" id="hazardSize" min="20" max="100" step="5" value="40">
+                    </div>
+                </div>
+
+                <!-- Player Section -->
+                <div class="settings-section">
+                    <h4>Player</h4>
+                    <div class="setting-item">
+                        <label>Player Speed: <span class="setting-value" id="playerSpeedVal">1.0</span></label>
+                        <input type="range" id="playerSpeed" min="0.1" max="3" step="0.1" value="1">
+                    </div>
+                    <div class="setting-item">
+                        <label>Player Size: <span class="setting-value" id="playerSizeVal">70</span></label>
+                        <input type="range" id="playerSize" min="30" max="120" step="5" value="70">
+                    </div>
+                    <div class="setting-item">
+                        <label>Starting Lives: <span class="setting-value" id="livesVal">3</span></label>
+                        <input type="range" id="livesCount" min="1" max="10" step="1" value="3">
+                    </div>
+                </div>
+
+                <!-- Collectibles Section -->
+                <div class="settings-section">
+                    <h4>Collectibles</h4>
+                    <div class="setting-item">
+                        <label>Spawn Rate: <span class="setting-value" id="spawnRateVal">2.0</span></label>
+                        <input type="range" id="spawnRate" min="0.1" max="10" step="0.1" value="2">
+                    </div>
+                    <div class="setting-item">
+                        <label>Coll. Size: <span class="setting-value" id="collectibleSizeVal">60</span></label>
+                        <input type="range" id="collectibleSize" min="30" max="100" step="5" value="60">
+                    </div>
+                    <div class="setting-item">
+                        <label>Points: <span class="setting-value" id="pointsVal">1</span></label>
+                        <input type="range" id="pointsPerCollectible" min="1" max="10" step="1" value="1">
+                    </div>
+                </div>
+
+                <!-- Visual Effects Section -->
+                <div class="settings-section">
+                    <h4>Visual</h4>
+                    <div class="setting-item">
+                        <label>Particles: <span class="setting-value" id="particleVal">10</span></label>
+                        <input type="range" id="particleCountSlider" min="1" max="50" step="1" value="10">
+                    </div>
+                    <div class="setting-item">
+                        <label>Ghost Duration: <span class="setting-value" id="ghostVal">0.5</span></label>
+                        <input type="range" id="ghostDuration" min="0" max="2" step="0.1" value="0.5">
+                    </div>
+                    <div class="setting-checkbox">
+                        <input type="checkbox" id="enableShadows" checked>
+                        <label for="enableShadows">Shadows</label>
+                    </div>
+                </div>
+
+                <!-- Controls Section -->
+                <div class="settings-section">
+                    <h4>Controls</h4>
+                    <div class="setting-item">
+                        <label>Joystick Sens: <span class="setting-value" id="joystickVal">0.2</span></label>
+                        <input type="range" id="joystickSensitivity" min="0.05" max="0.5" step="0.01" value="0.2">
+                    </div>
+                    <div class="setting-item">
+                        <label>Joystick Size: <span class="setting-value" id="joystickSizeVal">100</span></label>
+                        <input type="range" id="joystickSize" min="50" max="150" step="10" value="100">
+                    </div>
+                    <div class="setting-item">
+                        <label>Control Mode:</label>
+                        <select id="controlMode">
+                            <option value="fixed">Fixed Joystick</option>
+                            <option value="floating">Floating Joystick</option>
+                            <option value="both">Both Controls</option>
+                        </select>
+                    </div>
+                    <div class="setting-item">
+                        <label>Fixed Position:</label>
+                        <select id="joystickPosition">
+                            <option value="left">Bottom Left</option>
+                            <option value="middle">Bottom Middle</option>
+                            <option value="right">Bottom Right</option>
+                        </select>
+                    </div>
+                    <div class="setting-checkbox">
+                        <input type="checkbox" id="enableVibration" checked>
+                        <label for="enableVibration">Vibration</label>
+                    </div>
+                </div>
+
+                <!-- Full Width Sections -->
+                <div class="settings-section full-width">
+                    <h4>Appearance</h4>
+                    <div class="setting-item">
+                        <label>Background Color:</label>
+                        <input type="color" id="bgColor" value="#121212">
+                    </div>
+                    <div class="setting-item">
+                        <label>Game Theme:</label>
+                        <select id="gameTheme">
+                            <option value="default">Default</option>
+                            <option value="dark">Dark Mode</option>
+                            <option value="neon">Neon</option>
+                            <option value="retro">Retro</option>
+                            <option value="nature">Nature</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Audio Section -->
+                <div class="settings-section full-width">
+                    <h4>Audio</h4>
+                    <div class="setting-checkbox">
+                        <input type="checkbox" id="enableSound" checked>
+                        <label for="enableSound">Enable Sound Effects</label>
+                    </div>
+                    <div class="setting-checkbox">
+                        <input type="checkbox" id="enableBackgroundMusic" checked>
+                        <label for="enableBackgroundMusic">Background Music</label>
+                    </div>
+                </div>
+
+                <!-- PWA Section -->
+                <div class="settings-section full-width">
+                    <h4>App</h4>
+                    <div class="setting-checkbox">
+                        <input type="checkbox" id="enableOffline" checked>
+                        <label for="enableOffline">Offline Mode</label>
+                    </div>
+                    <div class="setting-checkbox">
+                        <input type="checkbox" id="enableNotifications" checked>
+                        <label for="enableNotifications">Game Notifications</label>
+                    </div>
+                    <button id="clearCacheBtn" class="apply-settings-btn" style="background: linear-gradient(135deg, #FF9800, #FF5722); margin-top: 5px;">
+                        Clear Cache
+                    </button>
+                </div>
+            </div>
+
+            <button id="applySettings" class="apply-settings-btn">Apply Settings</button>
+        </div>
+    </div>
+
+    <!-- Fixed Joystick -->
+    <div id="joystick">
+        <div id="stick"></div>
+    </div>
+
+    <!-- Floating Joystick -->
+    <div id="floatingJoystick">
+        <div id="floatingStick"></div>
+    </div>
+
+    <script>
+        // ========== PWA Functionality ==========
+        // Register Service Worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js').then(registration => {
+                    console.log('ServiceWorker registered:', registration.scope);
+                    showToast('App ready for offline use!');
+                }).catch(error => {
+                    console.log('ServiceWorker registration failed:', error);
+                });
+            });
+        }
+
+        // PWA Install Prompt
+        let deferredPrompt;
+        const installBtn = document.getElementById('installBtn');
+        const statusBar = document.getElementById('statusBar');
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            installBtn.style.display = 'block';
+            installBtn.addEventListener('click', () => {
+                installBtn.style.display = 'none';
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        console.log('User accepted install');
+                        showToast('App installed successfully!');
+                    }
+                    deferredPrompt = null;
+                });
+            });
+        });
+
+        window.addEventListener('appinstalled', () => {
+            console.log('App installed');
+            installBtn.style.display = 'none';
+            deferredPrompt = null;
+        });
+
+        // Offline/Online Detection
+        window.addEventListener('online', () => {
+            document.getElementById('offlineIndicator').style.display = 'none';
+            showToast('Back online!');
+        });
+
+        window.addEventListener('offline', () => {
+            document.getElementById('offlineIndicator').style.display = 'block';
+            showToast('Offline mode enabled');
+        });
+
+        // Check initial online status
+        if (!navigator.onLine) {
+            document.getElementById('offlineIndicator').style.display = 'block';
+        }
+
+        // Toast Notification Function
+        function showToast(message, duration = 3000) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, duration);
+        }
+
+        // ========== Game Code ==========
+        const canvas = document.getElementById("game");
+        const ctx = canvas.getContext("2d");
+        let bgColor = "#121212";
+
+        // Game state
+        let gameRunning = true;
+        let isPaused = false;
+
+        function resize() {
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = window.innerWidth * dpr;
+            canvas.height = window.innerHeight * dpr;
+            canvas.style.width = window.innerWidth + "px";
+            canvas.style.height = window.innerHeight + "px";
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            ctx.scale(dpr, dpr);
+            ctx.imageSmoothingEnabled = true;
+        }
+        resize();
+        window.addEventListener("resize", resize);
+
+        // Generate placeholder images if real images fail to load
+        function createPlaceholderImage(color, text) {
+            const size = 256;
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            
+            // Background
+            ctx.fillStyle = color;
+            ctx.fillRect(0, 0, size, size);
+            
+            // Border
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 10;
+            ctx.strokeRect(5, 5, size - 10, size - 10);
+            
+            // Text
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 40px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(text, size / 2, size / 2);
+            
+            return canvas.toDataURL();
+        }
+
+        // Load images with fallback
+        const playerImg = new Image();
+        const collectibleImg = new Image();
+        const hazardImg = new Image();
+        
+        // Try to load images, fallback to placeholders
+        playerImg.onerror = () => {
+            playerImg.src = createPlaceholderImage('#4CAF50', 'P');
+        };
+        collectibleImg.onerror = () => {
+            collectibleImg.src = createPlaceholderImage('#FFD700', 'C');
+        };
+        hazardImg.onerror = () => {
+            hazardImg.src = createPlaceholderImage('#FF5555', 'H');
+        };
+        
+        playerImg.src = "2.png";
+        collectibleImg.src = "1.png";
+        hazardImg.src = "3.png";
+
+        
+        // Create audio context for sound
+        let audioContext;
+        let coinSoundBuffer;
+        
+        function initAudio() {
+            try {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                createCoinSound();
+            } catch (e) {
+                console.log("Web Audio API not supported");
+            }
+        }
+        
+        function createCoinSound() {
+            if (!audioContext) return;
+            
+            const duration = 0.3;
+            const sampleRate = audioContext.sampleRate;
+            const frameCount = duration * sampleRate;
+            const buffer = audioContext.createBuffer(1, frameCount, sampleRate);
+            const channelData = buffer.getChannelData(0);
+            
+            for (let i = 0; i < frameCount; i++) {
+                const t = i / sampleRate;
+                // Create a simple coin pickup sound
+                channelData[i] = Math.sin(2 * Math.PI * 800 * t) * 
+                                Math.sin(2 * Math.PI * 1200 * t) * 
+                                Math.exp(-5 * t);
+            }
+            
+            coinSoundBuffer = buffer;
+        }
+        
+        function playCoinSound() {
+            if (!audioContext || !coinSoundBuffer || !enableSound) return;
+            
+            try {
+                const source = audioContext.createBufferSource();
+                source.buffer = coinSoundBuffer;
+                source.connect(audioContext.destination);
+                source.start();
+            } catch (e) {
+                console.log("Could not play sound");
+            }
+        }
+
+        // Game variables
+        let lives, score, gameOver;
+        const player = { size: 70, speedX: 0, speedY: 0, x: 0, y: 0 };
+        let collectibles = [], hazards = [], playerGhosts = [], particles = [];
+        let hazardCount = 3, pointsPerCollectible = 1;
+
+        // DOM elements
+        const livesValue = document.getElementById("livesValue");
+        const scoreValue = document.getElementById("scoreValue");
+        const topScoresBtn = document.getElementById("topScoresBtn");
+        const topScoresDisplay = document.getElementById("topScoresDisplay");
+        const gameOverText = document.getElementById("gameOverText");
+        const pauseBtn = document.getElementById("pauseBtn");
+        const resumeBtn = document.getElementById("resumeBtn");
+        const pauseOverlay = document.getElementById("pauseOverlay");
+        const safeZone = document.getElementById("safeZone");
+        const controlModeIndicator = document.getElementById("controlModeIndicator");
+        const loadingScreen = document.getElementById("loadingScreen");
+
+        // Settings variables
+        let hazardSpeed = 1, spawnRate = 2, playerSpeedMultiplier = 1;
+        let joystickSensitivity = 0.2, joystickSize = 100;
+        let enableSound = true, enableShadows = true, enableVibration = true;
+        let ghostDuration = 0.5, particleCountSetting = 10;
+        let controlMode = "fixed";
+        let joystickPosition = "left";
+
+        // Joystick elements
+        const joystick = document.getElementById("joystick");
+        const stick = document.getElementById("stick");
+        const floatingJoystick = document.getElementById("floatingJoystick");
+        const floatingStick = document.getElementById("floatingStick");
+
+        // Control state
+        let dragging = false;
+        let floatingDragging = false;
+        let floatingJoystickCenter = { x: 0, y: 0 };
+
+        function updateJoystick() {
+            joystick.style.width = joystickSize + "px";
+            joystick.style.height = joystickSize + "px";
+            stick.style.width = joystickSize * 0.4 + "px";
+            stick.style.height = joystickSize * 0.4 + "px";
+            stick.style.top = joystickSize * 0.3 + "px";
+            stick.style.left = joystickSize * 0.3 + "px";
+
+            floatingJoystick.style.width = joystickSize + "px";
+            floatingJoystick.style.height = joystickSize + "px";
+            floatingStick.style.width = joystickSize * 0.4 + "px";
+            floatingStick.style.height = joystickSize * 0.4 + "px";
+            floatingStick.style.top = joystickSize * 0.3 + "px";
+            floatingStick.style.left = joystickSize * 0.3 + "px";
+
+            joystick.style.position = "fixed";
+            joystick.style.bottom = "30px";
+            joystick.style.top = "auto";
+            joystick.style.left = "auto";
+            joystick.style.right = "auto";
+            joystick.style.transform = "none";
+
+            switch (joystickPosition) {
+                case "left":
+                    joystick.style.left = "20px";
+                    joystick.style.right = "auto";
+                    break;
+                case "middle":
+                    joystick.style.left = "50%";
+                    joystick.style.transform = "translateX(-50%)";
+                    break;
+                case "right":
+                    joystick.style.right = "20px";
+                    joystick.style.left = "auto";
+                    break;
+            }
+
+            let modeText = "";
+            switch (controlMode) {
+                case "fixed":
+                    modeText = "Fixed Joystick";
+                    joystick.style.display = "block";
+                    floatingJoystick.style.display = "none";
+                    break;
+                case "floating":
+                    modeText = "Floating Joystick";
+                    joystick.style.display = "none";
+                    floatingJoystick.style.display = "none";
+                    break;
+                case "both":
+                    modeText = "Both Controls";
+                    joystick.style.display = "block";
+                    floatingJoystick.style.display = "none";
+                    break;
+            }
+            controlModeIndicator.textContent = `Controls: ${modeText}`;
+        }
+
+        // Fixed joystick events
+        joystick.addEventListener("touchstart", (e) => {
+            if (isPaused) return;
+            e.preventDefault();
+            dragging = true;
+        });
+
+        joystick.addEventListener("touchend", () => {
+            dragging = false;
+            stick.style.transform = "translate(0,0)";
+            if (!floatingDragging) {
+                player.speedX = player.speedY = 0;
+            }
+        });
+
+        joystick.addEventListener("touchmove", e => {
+            if (!dragging || isPaused) return;
+            e.preventDefault();
+            const rect = joystick.getBoundingClientRect();
+            const touch = e.touches[0];
+            let x = touch.clientX - rect.left - joystickSize / 2;
+            let y = touch.clientY - rect.top - joystickSize / 2;
+            const dist = Math.hypot(x, y);
+            const max = joystickSize * 0.35;
+            if (dist > max) {
+                x = (x / dist) * max;
+                y = (y / dist) * max;
+            }
+            stick.style.transform = `translate(${x}px,${y}px)`;
+            player.speedX = x * joystickSensitivity * playerSpeedMultiplier;
+            player.speedY = y * joystickSensitivity * playerSpeedMultiplier;
+        });
+
+        // Canvas touch events for floating joystick
+        canvas.addEventListener("touchstart", (e) => {
+            if (isPaused) return;
+
+            const touch = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            const touchX = touch.clientX;
+            const touchY = touch.clientY;
+
+            const topBar = document.getElementById("top-bar");
+            const topBarRect = topBar.getBoundingClientRect();
+
+            if (touchY < topBarRect.bottom) return;
+
+            const shouldUseFloating =
+                (controlMode === "floating") ||
+                (controlMode === "both" && !isTouchOnFixedJoystick(touchX, touchY));
+
+            if (shouldUseFloating) {
+                e.preventDefault();
+                floatingDragging = true;
+
+                floatingJoystickCenter.x = touchX;
+                floatingJoystickCenter.y = touchY;
+
+                floatingJoystick.style.left = (touchX - joystickSize / 2) + "px";
+                floatingJoystick.style.top = (touchY - joystickSize / 2) + "px";
+                floatingJoystick.style.display = "block";
+
+                floatingStick.style.transform = "translate(0,0)";
+            }
+        });
+
+        canvas.addEventListener("touchmove", (e) => {
+            if (isPaused || !floatingDragging) return;
+
+            e.preventDefault();
+            const touch = e.touches[0];
+
+            let x = touch.clientX - floatingJoystickCenter.x;
+            let y = touch.clientY - floatingJoystickCenter.y;
+            const dist = Math.hypot(x, y);
+            const max = joystickSize * 0.35;
+
+            if (dist > max) {
+                x = (x / dist) * max;
+                y = (y / dist) * max;
+            }
+
+            floatingStick.style.transform = `translate(${x}px,${y}px)`;
+            player.speedX = x * joystickSensitivity * playerSpeedMultiplier;
+            player.speedY = y * joystickSensitivity * playerSpeedMultiplier;
+        });
+
+        canvas.addEventListener("touchend", (e) => {
+            if (floatingDragging) {
+                floatingDragging = false;
+                floatingJoystick.style.display = "none";
+                floatingStick.style.transform = "translate(0,0)";
+
+                if (!dragging) {
+                    player.speedX = player.speedY = 0;
+                }
+            }
+        });
+
+        canvas.addEventListener("touchcancel", (e) => {
+            if (floatingDragging) {
+                floatingDragging = false;
+                floatingJoystick.style.display = "none";
+                floatingStick.style.transform = "translate(0,0)";
+
+                if (!dragging) {
+                    player.speedX = player.speedY = 0;
+                }
+            }
+        });
+
+        function isTouchOnFixedJoystick(touchX, touchY) {
+            if (controlMode === "floating") return false;
+
+            const rect = joystick.getBoundingClientRect();
+            const joystickRadius = joystickSize / 2;
+            const joystickCenterX = rect.left + joystickRadius;
+            const joystickCenterY = rect.top + joystickRadius;
+
+            const distance = Math.hypot(touchX - joystickCenterX, touchY - joystickCenterY);
+            return distance <= joystickRadius;
+        }
+
+        // Restart button
+        const restartBtn = document.getElementById("restartBtn");
+        restartBtn.onclick = startGame;
+
+        // Pause button
+        pauseBtn.onclick = togglePause;
+
+        // Resume button
+        resumeBtn.onclick = togglePause;
+
+        function togglePause() {
+            isPaused = !isPaused;
+            pauseOverlay.style.display = isPaused ? "flex" : "none";
+            resumeBtn.style.display = isPaused ? "block" : "none";
+
+            if (isPaused) {
+                stick.style.transform = "translate(0,0)";
+                floatingStick.style.transform = "translate(0,0)";
+                player.speedX = player.speedY = 0;
+                floatingJoystick.style.display = "none";
+                dragging = false;
+                floatingDragging = false;
+            }
+        }
+
+        // Top Scores
+        topScoresBtn.onclick = e => {
+            e.stopPropagation();
+            topScoresDisplay.style.display = topScoresDisplay.style.display === "none" ? "block" : "none";
+            updateTopScoresDisplay();
+        };
+        document.addEventListener("click", () => {
+            topScoresDisplay.style.display = "none";
+        });
+
+        function updateTopScoresDisplay() {
+            const scores = JSON.parse(localStorage.getItem("mobo_topScores")) || [];
+            topScoresDisplay.innerHTML = "<h4>🏆 Top Scores 🏆</h4>" +
+                scores.map((s, i) => `${i + 1}. ${s} points`).join("<br>") || "No scores yet";
+        }
+
+        // Settings Modal
+        const settingsBtn = document.getElementById("settingsBtn");
+        const settingsModal = document.getElementById("settingsModal");
+        const closeSettingsBtn = document.getElementById("closeSettingsBtn");
+        const applySettingsBtn = document.getElementById("applySettings");
+        const clearCacheBtn = document.getElementById("clearCacheBtn");
+
+        settingsBtn.onclick = e => {
+            e.stopPropagation();
+            settingsModal.style.display = "block";
+            isPaused = true;
+            pauseOverlay.style.display = "none";
+            resumeBtn.style.display = "block";
+        };
+
+        closeSettingsBtn.onclick = () => {
+            settingsModal.style.display = "none";
+            isPaused = false;
+            pauseOverlay.style.display = "none";
+            resumeBtn.style.display = "none";
+        };
+
+        settingsModal.addEventListener("click", (e) => {
+            if (e.target === settingsModal) {
+                settingsModal.style.display = "none";
+                isPaused = false;
+                pauseOverlay.style.display = "none";
+                resumeBtn.style.display = "none";
+            }
+        });
+
+        applySettingsBtn.onclick = () => {
+            settingsModal.style.display = "none";
+            isPaused = false;
+            pauseOverlay.style.display = "none";
+            resumeBtn.style.display = "none";
+            applyAllSettings();
+            showToast("Settings applied!");
+        };
+
+        clearCacheBtn.onclick = () => {
+            if ('caches' in window) {
+                caches.keys().then(cacheNames => {
+                    cacheNames.forEach(cacheName => {
+                        caches.delete(cacheName);
+                    });
+                    showToast("Cache cleared!");
+                });
+            }
+        };
+
+        // Initialize settings values
+        function initializeSettings() {
+            document.getElementById("hazardSpeedVal").textContent = hazardSpeed.toFixed(1);
+            document.getElementById("hazardCountVal").textContent = hazardCount;
+            document.getElementById("hazardSizeVal").textContent = 40;
+            document.getElementById("playerSpeedVal").textContent = playerSpeedMultiplier.toFixed(1);
+            document.getElementById("playerSizeVal").textContent = player.size;
+            document.getElementById("livesVal").textContent = 3;
+            document.getElementById("spawnRateVal").textContent = spawnRate.toFixed(1);
+            document.getElementById("collectibleSizeVal").textContent = 60;
+            document.getElementById("pointsVal").textContent = pointsPerCollectible;
+            document.getElementById("particleVal").textContent = particleCountSetting;
+            document.getElementById("ghostVal").textContent = ghostDuration.toFixed(1);
+            document.getElementById("joystickVal").textContent = joystickSensitivity.toFixed(2);
+            document.getElementById("joystickSizeVal").textContent = joystickSize;
+            document.getElementById("controlMode").value = controlMode;
+            document.getElementById("joystickPosition").value = joystickPosition;
+
+            document.getElementById("hazardSpeed").addEventListener("input", e => {
+                hazardSpeed = parseFloat(e.target.value);
+                document.getElementById("hazardSpeedVal").textContent = hazardSpeed.toFixed(1);
+            });
+
+            document.getElementById("hazardCount").addEventListener("input", e => {
+                hazardCount = parseInt(e.target.value);
+                document.getElementById("hazardCountVal").textContent = hazardCount;
+            });
+
+            document.getElementById("hazardSize").addEventListener("input", e => {
+                const size = parseInt(e.target.value);
+                document.getElementById("hazardSizeVal").textContent = size;
+            });
+
+            document.getElementById("playerSpeed").addEventListener("input", e => {
+                playerSpeedMultiplier = parseFloat(e.target.value);
+                document.getElementById("playerSpeedVal").textContent = playerSpeedMultiplier.toFixed(1);
+            });
+
+            document.getElementById("playerSize").addEventListener("input", e => {
+                player.size = parseInt(e.target.value);
+                document.getElementById("playerSizeVal").textContent = player.size;
+            });
+
+            document.getElementById("livesCount").addEventListener("input", e => {
+                document.getElementById("livesVal").textContent = e.target.value;
+            });
+
+            document.getElementById("spawnRate").addEventListener("input", e => {
+                spawnRate = parseFloat(e.target.value);
+                document.getElementById("spawnRateVal").textContent = spawnRate.toFixed(1);
+            });
+
+            document.getElementById("collectibleSize").addEventListener("input", e => {
+                document.getElementById("collectibleSizeVal").textContent = e.target.value;
+            });
+
+            document.getElementById("pointsPerCollectible").addEventListener("input", e => {
+                pointsPerCollectible = parseInt(e.target.value);
+                document.getElementById("pointsVal").textContent = pointsPerCollectible;
+            });
+
+            document.getElementById("particleCountSlider").addEventListener("input", e => {
+                particleCountSetting = parseInt(e.target.value);
+                document.getElementById("particleVal").textContent = particleCountSetting;
+            });
+
+            document.getElementById("ghostDuration").addEventListener("input", e => {
+                ghostDuration = parseFloat(e.target.value);
+                document.getElementById("ghostVal").textContent = ghostDuration.toFixed(1);
+            });
+
+            document.getElementById("joystickSensitivity").addEventListener("input", e => {
+                joystickSensitivity = parseFloat(e.target.value);
+                document.getElementById("joystickVal").textContent = joystickSensitivity.toFixed(2);
+            });
+
+            document.getElementById("joystickSize").addEventListener("input", e => {
+                joystickSize = parseInt(e.target.value);
+                document.getElementById("joystickSizeVal").textContent = joystickSize;
+                updateJoystick();
+            });
+
+            document.getElementById("controlMode").addEventListener("change", e => {
+                controlMode = e.target.value;
+            });
+
+            document.getElementById("joystickPosition").addEventListener("change", e => {
+                joystickPosition = e.target.value;
+            });
+
+            document.getElementById("bgColor").addEventListener("input", e => {
+                bgColor = e.target.value;
+            });
+
+            document.getElementById("gameTheme").addEventListener("change", e => {
+                applyTheme(e.target.value);
+            });
+
+            document.getElementById("enableShadows").addEventListener("change", e => {
+                enableShadows = e.target.checked;
+            });
+
+            document.getElementById("enableSound").addEventListener("change", e => {
+                enableSound = e.target.checked;
+            });
+
+            document.getElementById("enableVibration").addEventListener("change", e => {
+                enableVibration = e.target.checked;
+            });
+
+            document.getElementById("enableBackgroundMusic").addEventListener("change", e => {
+                if (e.target.checked && audioContext && audioContext.state === 'suspended') {
+                    audioContext.resume();
+                }
+            });
+
+            document.getElementById("enableOffline").addEventListener("change", e => {
+                showToast(e.target.checked ? "Offline mode enabled" : "Offline mode disabled");
+            });
+        }
+
+        function applyTheme(theme) {
+            switch (theme) {
+                case "dark":
+                    bgColor = "#000000";
+                    break;
+                case "neon":
+                    bgColor = "#0a0a1a";
+                    break;
+                case "retro":
+                    bgColor = "#222222";
+                    break;
+                case "nature":
+                    bgColor = "#1a2f1a";
+                    break;
+                default:
+                    bgColor = "#121212";
+            }
+        }
+
+        function applyAllSettings() {
+            updateJoystick();
+
+            if (gameRunning && hazards.length > 0) {
+                hazards.forEach(h => {
+                    const hazardSizeInput = document.getElementById("hazardSize");
+                    if (hazardSizeInput) {
+                        h.size = parseInt(hazardSizeInput.value) || 40;
+                    }
+
+                    const dirX = Math.sign(h.dx) || 1;
+                    const dirY = Math.sign(h.dy) || 1;
+                    const baseSpeed = 1.5;
+                    h.dx = dirX * baseSpeed * hazardSpeed;
+                    h.dy = dirY * baseSpeed * hazardSpeed;
+                });
+            }
+
+            const collectibleSizeInput = document.getElementById("collectibleSize");
+            if (collectibleSizeInput) {
+                const newSize = parseInt(collectibleSizeInput.value) || 60;
+                collectibles.forEach(c => {
+                    c.size = newSize;
+                });
+            }
+        }
+
+        // Safe spawn function
+        function getSafeSpawnPosition() {
+            const safeZoneRadius = 120;
+            const maxAttempts = 50;
+            const canvasWidth = canvas.width / (window.devicePixelRatio || 1);
+            const canvasHeight = canvas.height / (window.devicePixelRatio || 1);
+
+            for (let attempt = 0; attempt < maxAttempts; attempt++) {
+                const centerX = canvasWidth / 2;
+                const centerY = canvasHeight / 2;
+
+                const angle = Math.random() * Math.PI * 2;
+                const radius = Math.random() * safeZoneRadius * 0.7;
+
+                const x = centerX + Math.cos(angle) * radius - player.size / 2;
+                const y = centerY + Math.sin(angle) * radius - player.size / 2;
+
+                if (x < 0 || y < 0 ||
+                    x + player.size > canvasWidth ||
+                    y + player.size > canvasHeight) {
+                    continue;
+                }
+
+                let isSafe = true;
+                for (const hazard of hazards) {
+                    if (collide({ x, y, size: player.size }, hazard)) {
+                        isSafe = false;
+                        break;
+                    }
+                }
+
+                if (isSafe) {
+                    return { x, y };
+                }
+            }
+
+            const positions = [
+                { x: 50, y: 50 },
+                { x: canvasWidth - player.size - 50, y: 50 },
+                { x: 50, y: canvasHeight - player.size - 50 },
+                { x: canvasWidth - player.size - 50, y: canvasHeight - player.size - 50 },
+                { x: canvasWidth / 2 - player.size / 2, y: canvasHeight / 2 - player.size / 2 }
+            ];
+
+            for (const pos of positions) {
+                let isSafe = true;
+                for (const hazard of hazards) {
+                    if (collide({ x: pos.x, y: pos.y, size: player.size }, hazard)) {
+                        isSafe = false;
+                        break;
+                    }
+                }
+                if (isSafe) return pos;
+            }
+
+            return {
+                x: canvasWidth / 2 - player.size / 2,
+                y: canvasHeight / 2 - player.size / 2
+            };
+        }
+
+        /* High Scores */
+        function saveHighScore(score) {
+            let scores = JSON.parse(localStorage.getItem("mobo_topScores")) || [];
+            scores.push(score);
+            scores.sort((a, b) => b - a);
+            scores = scores.slice(0, 5);
+            localStorage.setItem("mobo_topScores", JSON.stringify(scores));
+        }
+
+        /* Collision */
+        function collide(a, b) {
+            return a.x < b.x + b.size &&
+                a.x + a.size > b.x &&
+                a.y < b.y + b.size &&
+                a.y + a.size > b.y;
+        }
+
+        /* Spawn functions */
+        function spawnCollectible() {
+            const canvasWidth = canvas.width / (window.devicePixelRatio || 1);
+            const canvasHeight = canvas.height / (window.devicePixelRatio || 1);
+            const collectibleSize = parseInt(document.getElementById("collectibleSize")?.value) || 60;
+
+            collectibles.push({
+                x: Math.random() * (canvasWidth - collectibleSize),
+                y: Math.random() * (canvasHeight - collectibleSize),
+                size: collectibleSize,
+                scale: 1,
+                alpha: 1,
+                collected: false
+            });
+        }
+
+        function spawnHazards() {
+            hazards = [];
+            const canvasWidth = canvas.width / (window.devicePixelRatio || 1);
+            const canvasHeight = canvas.height / (window.devicePixelRatio || 1);
+            const hazardSizeVal = parseInt(document.getElementById("hazardSize")?.value) || 40;
+
+            for (let i = 0; i < hazardCount; i++) {
+                let x, y;
+                let attempts = 0;
+
+                do {
+                    x = Math.random() * canvasWidth;
+                    y = Math.random() * canvasHeight;
+                    attempts++;
+
+                    const centerX = canvasWidth / 2;
+                    const centerY = canvasHeight / 2;
+                    const distance = Math.hypot(x - centerX, y - centerY);
+
+                    if (attempts > 50) break;
+
+                } while (Math.random() < 0.5 && attempts < 30);
+
+                hazards.push({
+                    x: Math.max(0, Math.min(x, canvasWidth - hazardSizeVal)),
+                    y: Math.max(0, Math.min(y, canvasHeight - hazardSizeVal)),
+                    size: hazardSizeVal,
+                    dx: (Math.random() * 1 + 0.5) * (Math.random() < 0.5 ? -1 : 1) * hazardSpeed,
+                    dy: (Math.random() * 1 + 0.5) * (Math.random() < 0.5 ? -1 : 1) * hazardSpeed
+                });
+            }
+        }
+
+        function spawnParticles(x, y, color, count = null) {
+            const countToUse = count || particleCountSetting;
+            for (let i = 0; i < countToUse; i++) {
+                particles.push({
+                    x: x,
+                    y: y,
+                    dx: (Math.random() - 0.5) * 4,
+                    dy: (Math.random() - 0.5) * 4,
+                    size: Math.random() * 6 + 2,
+                    alpha: 1,
+                    color: color
+                });
+            }
+        }
+
+        /* Start Game */
+        function startGame() {
+            lives = parseInt(document.getElementById("livesCount")?.value) || 3;
+            score = 0;
+            gameOver = false;
+            gameRunning = true;
+            isPaused = false;
+
+            collectibles = [];
+            hazards = [];
+            playerGhosts = [];
+            particles = [];
+
+            spawnHazards();
+
+            const safePos = getSafeSpawnPosition();
+            player.x = safePos.x;
+            player.y = safePos.y;
+
+            safeZone.style.display = "block";
+            setTimeout(() => {
+                safeZone.style.display = "none";
+            }, 2000);
+
+            restartBtn.style.display = "none";
+            gameOverText.style.display = "none";
+            pauseOverlay.style.display = "none";
+            resumeBtn.style.display = "none";
+            floatingJoystick.style.display = "none";
+
+            updateHUD();
+            
+            // Request notification permission
+            if ('Notification' in window && Notification.permission === 'default') {
+                Notification.requestPermission();
+            }
+        }
+
+        /* HUD Update */
+        function updateHUD() {
+            livesValue.textContent = lives;
+            scoreValue.textContent = score;
+        }
+
+        /* Update */
+        let lastCollectibleSpawn = 0;
+        function update() {
+            if (gameOver || isPaused || !gameRunning) return;
+
+            const dt = 1 / 60;
+            player.x += player.speedX;
+            player.y += player.speedY;
+
+            const playerSize = player.size;
+            const maxX = canvas.width / (window.devicePixelRatio || 1) - playerSize;
+            const maxY = canvas.height / (window.devicePixelRatio || 1) - playerSize;
+            player.x = Math.max(0, Math.min(player.x, maxX));
+            player.y = Math.max(0, Math.min(player.y, maxY));
+
+            hazards.forEach(h => {
+                h.x += h.dx;
+                h.y += h.dy;
+                if (h.x <= 0 || h.x + h.size > canvas.width / (window.devicePixelRatio || 1)) h.dx *= -1;
+                if (h.y <= 0 || h.y + h.size > canvas.height / (window.devicePixelRatio || 1)) h.dy *= -1;
+
+                if (collide(player, h)) {
+                    lives--;
+                    playerGhosts.push({
+                        x: player.x,
+                        y: player.y,
+                        size: player.size,
+                        alpha: 1,
+                        life: ghostDuration
+                    });
+
+                    const safePos = getSafeSpawnPosition();
+                    player.x = safePos.x;
+                    player.y = safePos.y;
+
+                    safeZone.style.display = "block";
+                    setTimeout(() => {
+                        safeZone.style.display = "none";
+                    }, 1500);
+
+                    if (enableVibration && navigator.vibrate) {
+                        navigator.vibrate(200);
+                    }
+
+                    if (lives <= 0) {
+                        gameOver = true;
+                        gameRunning = false;
+                        saveHighScore(score);
+                        restartBtn.style.display = "block";
+                        gameOverText.style.display = "block";
+                        
+                        // Show notification on game over
+                        if ('Notification' in window && Notification.permission === 'granted') {
+                            new Notification('Mobo Game - Game Over!', {
+                                body: `Final Score: ${score} points`,
+                                icon: 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎮</text></svg>'
+                            });
+                        }
+                    }
+
+                    updateHUD();
+                }
+
+                collectibles.forEach(c => {
+                    if (!c.collected && collide(h, c)) {
+                        c.collected = true;
+                        spawnParticles(c.x + c.size / 2, c.y + c.size / 2, "#ff5555", 8);
+                    }
+                });
+            });
+
+            collectibles.forEach(c => {
+                if (!c.collected && collide(player, c)) {
+                    c.collected = true;
+                    playCoinSound();
+                    score += pointsPerCollectible;
+                    spawnParticles(c.x + c.size / 2, c.y + c.size / 2, "#ffdd55");
+                    updateHUD();
+                }
+                if (c.collected) {
+                    c.scale -= 0.05;
+                    c.alpha -= 0.05;
+                }
+            });
+
+            collectibles = collectibles.filter(c => c.alpha > 0);
+
+            lastCollectibleSpawn += dt;
+            if (collectibles.length < spawnRate) {
+                spawnCollectible();
+                lastCollectibleSpawn = 0;
+            }
+
+            playerGhosts.forEach(g => {
+                g.life -= dt;
+                g.alpha = g.life / ghostDuration;
+            });
+            playerGhosts = playerGhosts.filter(g => g.life > 0);
+
+            particles.forEach(p => {
+                p.x += p.dx;
+                p.y += p.dy;
+                p.alpha -= 0.03;
+                p.size *= 0.98;
+            });
+            particles = particles.filter(p => p.alpha > 0 && p.size > 0.5);
+        }
+
+        /* Draw */
+        function draw() {
+            ctx.fillStyle = bgColor;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            playerGhosts.forEach(g => {
+                ctx.save();
+                ctx.globalAlpha = g.alpha * 0.6;
+                ctx.drawImage(playerImg, g.x, g.y, g.size, g.size);
+                ctx.restore();
+            });
+
+            if (!gameOver && gameRunning) {
+                ctx.save();
+                if (enableShadows) {
+                    ctx.shadowColor = "rgba(255,255,255,0.3)";
+                    ctx.shadowBlur = 10;
+                }
+                ctx.drawImage(playerImg, player.x, player.y, player.size, player.size);
+                ctx.restore();
+            }
+
+            collectibles.forEach(c => {
+                ctx.save();
+                ctx.globalAlpha = c.alpha;
+                if (enableShadows) {
+                    ctx.shadowColor = "rgba(255,215,0,0.5)";
+                    ctx.shadowBlur = 8;
+                }
+                ctx.translate(c.x + c.size / 2, c.y + c.size / 2);
+                ctx.scale(c.scale, c.scale);
+                ctx.drawImage(collectibleImg, -c.size / 2, -c.size / 2, c.size, c.size);
+                ctx.restore();
+            });
+
+            hazards.forEach(h => {
+                ctx.save();
+                if (enableShadows) {
+                    ctx.shadowColor = "rgba(255,0,0,0.5)";
+                    ctx.shadowBlur = 8;
+                }
+                ctx.drawImage(hazardImg, h.x, h.y, h.size, h.size);
+                ctx.restore();
+            });
+
+            particles.forEach(p => {
+                ctx.save();
+                ctx.globalAlpha = p.alpha;
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            });
+        }
+
+        /* Game Loop */
+        function loop() {
+            if (!isPaused) {
+                update();
+            }
+            draw();
+            requestAnimationFrame(loop);
+        }
+
+        // Initialize everything
+        function init() {
+            updateJoystick();
+            initializeSettings();
+            initAudio();
+            
+            // Hide loading screen
+            setTimeout(() => {
+                loadingScreen.style.opacity = '0';
+                setTimeout(() => {
+                    loadingScreen.style.display = 'none';
+                    showToast('Mobo Game Loaded!', 2000);
+                }, 500);
+            }, 1000);
+        }
+
+        // Start game when images load
+        let loadedImages = 0;
+        const totalImages = 3;
+        function imageLoaded() {
+            loadedImages++;
+            if (loadedImages === totalImages) {
+                init();
+                startGame();
+                loop();
+            }
+        }
+        playerImg.onload = imageLoaded;
+        collectibleImg.onload = imageLoaded;
+        hazardImg.onload = imageLoaded;
+
+        // Set timeout in case images fail to load
+        setTimeout(() => {
+            if (loadedImages < totalImages) {
+                console.log("Using placeholder images");
+                imageLoaded();
+                imageLoaded();
+                imageLoaded();
+            }
+        }, 3000);
+
+        // Prevent accidental scrolling on mobile
+        document.addEventListener('touchmove', function (e) {
+            if (e.target === canvas || e.target === joystick || e.target === stick) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+
+        // Keyboard controls for testing
+        document.addEventListener('keydown', (e) => {
+            if (e.key.toLowerCase() === 'p') {
+                togglePause();
+                return;
+            }
+
+            if (e.key.toLowerCase() === 'r' && gameOver) {
+                startGame();
+                return;
+            }
+
+            if (isPaused) return;
+
+            const speed = 5 * playerSpeedMultiplier;
+            switch (e.key.toLowerCase()) {
+                case 'w':
+                case 'arrowup':
+                    player.speedY = -speed;
+                    break;
+                case 's':
+                case 'arrowdown':
+                    player.speedY = speed;
+                    break;
+                case 'a':
+                case 'arrowleft':
+                    player.speedX = -speed;
+                    break;
+                case 'd':
+                case 'arrowright':
+                    player.speedX = speed;
+                    break;
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            switch (e.key.toLowerCase()) {
+                case 'w':
+                case 's':
+                case 'arrowup':
+                case 'arrowdown':
+                    player.speedY = 0;
+                    break;
+                case 'a':
+                case 'd':
+                case 'arrowleft':
+                case 'arrowright':
+                    player.speedX = 0;
+                    break;
+            }
+        });
+
+        // Fullscreen support
+        document.addEventListener('dblclick', () => {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => {
+                    console.log(`Error attempting to enable fullscreen: ${err.message}`);
+                });
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                }
+            }
+        });
+
+        // Initialize on load
+        window.addEventListener('load', () => {
+            // Add manifest dynamically
+            const manifest = {
+                "name": "Mobo Game",
+                "short_name": "Mobo",
+                "description": "Mobile obstacle avoidance game",
+                "start_url": ".",
+                "display": "standalone",
+                "background_color": "#121212",
+                "theme_color": "#121212",
+                "orientation": "landscape",
+                "icons": [
+                    {
+                        "src": "data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎮</text></svg>",
+                        "sizes": "192x192",
+                        "type": "image/svg+xml"
+                    }
+                ]
+            };
+            
+            // Create manifest link
+            const manifestString = JSON.stringify(manifest);
+            const blob = new Blob([manifestString], { type: 'application/json' });
+            const manifestURL = URL.createObjectURL(blob);
+            const link = document.createElement('link');
+            link.rel = 'manifest';
+            link.href = manifestURL;
+            document.head.appendChild(link);
+        });
+    </script>
+
+    <!-- Inline Service Worker -->
+    <script id="service-worker">
+        if ('serviceWorker' in navigator) {
+            const swCode = `
+                const CACHE_NAME = 'mobo-game-v1';
+                const ASSETS_TO_CACHE = [
+                    './',
+                    'index.html',
+                    '2.png',
+                    '1.png',
+                    '3.png'
+                ];
+
+                self.addEventListener('install', event => {
+                    event.waitUntil(
+                        caches.open(CACHE_NAME)
+                            .then(cache => cache.addAll(ASSETS_TO_CACHE))
+                            .then(() => self.skipWaiting())
+                    );
+                });
+
+                self.addEventListener('activate', event => {
+                    event.waitUntil(
+                        caches.keys().then(cacheNames => {
+                            return Promise.all(
+                                cacheNames.map(cacheName => {
+                                    if (cacheName !== CACHE_NAME) {
+                                        return caches.delete(cacheName);
+                                    }
+                                })
+                            );
+                        }).then(() => self.clients.claim())
+                    );
+                });
+
+                self.addEventListener('fetch', event => {
+                    event.respondWith(
+                        caches.match(event.request)
+                            .then(response => {
+                                if (response) {
+                                    return response;
+                                }
+                                return fetch(event.request)
+                                    .then(response => {
+                                        if (!response || response.status !== 200 || response.type !== 'basic') {
+                                            return response;
+                                        }
+                                        const responseToCache = response.clone();
+                                        caches.open(CACHE_NAME)
+                                            .then(cache => {
+                                                cache.put(event.request, responseToCache);
+                                            });
+                                        return response;
+                                    })
+                                    .catch(() => {
+                                        // Return offline page or fallback
+                                        return new Response('Offline', {
+                                            status: 503,
+                                            statusText: 'Service Unavailable',
+                                            headers: new Headers({
+                                                'Content-Type': 'text/plain'
+                                            })
+                                        });
+                                    });
+                            })
+                    );
+                });
+            `;
+
+            const blob = new Blob([swCode], { type: 'application/javascript' });
+            const swUrl = URL.createObjectURL(blob);
+            
+            navigator.serviceWorker.register(swUrl, { scope: './' })
+                .then(registration => {
+                    console.log('Service Worker registered with scope:', registration.scope);
+                })
+                .catch(error => {
+                    console.log('Service Worker registration failed:', error);
+                });
+        }
+    </script>
+</body>
+</html>
